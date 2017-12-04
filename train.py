@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib
+import preprocessing
 
 import os
 
@@ -55,3 +56,13 @@ print(mergedSampleData)
 print("y_train: ")
 print(Y_train)
 
+preprocessing.OneHotEncodeColumn(mergedSampleData, "Assortment")
+
+#split date into day, month and year
+mergedSampleData[['year', 'month', 'date']] = mergedSampleData.apply(lambda column: preprocessing.SplitDateIntoDayMonthYear2(column, 'Date', 'YYYY/MM/DD'), axis = 1)
+
+categoricalColumns = ['DayOfWeek', 'Assortment', 'StoreType', 'StateHoliday', 'year', 'month', 'date'];
+
+for categories in categoricalColumns:
+	df = preprocessing.OneHotEncodeColumn(mergedSampleData, categories)
+print(df)
