@@ -45,9 +45,13 @@ def SplitDateIntoDayMonthYear(df, columnName, dateFormat):
 				#date = int(d[2])
 				#validFormat = true
 
-		if (split is not ''):
-			print(df.loc[0, columnName].split(split))
-			df[columnName + "_year"] = (df[columnName].str.split(split))[0]
+		if (split != ''):
+			for i, row in df.T.iteritems():
+			# print(df.loc[0, columnName].split(split))
+				d = df.loc[0, columnName].split(split)
+				df.at[i, columnName + "_year"] = d[0]
+				df.at[i, columnName + "_month"] = d[1]
+				df.at[i, columnName + "_date"] = d[2]
 			#for i, row in df.T.iteritems():
 
 				#df.loc[i, columnName + "_year"] = 
@@ -57,22 +61,41 @@ def SplitDateIntoDayMonthYear(df, columnName, dateFormat):
 
 def SplitDateIntoDayMonthYear2(row, columnName, dateFormat):
 
-	if (dateFormat.upper() == "YYYY/MM/DD" or dateFormat.upper() == "YYYY-MM-DD"):
-		d = dateFormat.split('/')
-		split = ''
+	try:
+		if (dateFormat.upper() == "YYYY/MM/DD" or dateFormat.upper() == "YYYY-MM-DD"):
+			d = dateFormat.split('/')
+			split = ''
 
-		if (len(d) == 3):
-			# date format is yyyy/mm/dd
-			split = '/'
-
-		else:
-			d = dateFormat.split('-')
 			if (len(d) == 3):
-				# date format is yyyy-mm-dd
-				split = '-'
+				# date format is yyyy/mm/dd
+				split = '/'
 
-		if (split != ''):
-			d = row[columnName].split(split)
-			columns = pandas.Series({columnName + "_year": d[0], columnName + "_month": d[1], columnName + "_date": d[2] })
-			return columns
-			
+			else:
+				d = dateFormat.split('-')
+				if (len(d) == 3):
+					# date format is yyyy-mm-dd
+					split = '-'
+
+			if (split != ''):
+				d = row[columnName].split(split)
+				assert len(d) == 3
+
+				# columns = pandas.Series({columnName + "_year": d[0], columnName + "_month": d[1], columnName + "_date": d[2] })
+				# print(columns)
+				# return columns
+				return d[0], d[1], d[2]
+
+	except AssertionError:
+		print("Test failed in SplitDateIntoDayMonthYear2. d: ")
+		print(d)
+		print("split: " + split)
+
+def CreateEmptyMonthColumns(df, display="number"):
+	if display == "name":
+		names = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dev']
+		for name in names:
+			df["month_" + name] = 0
+	elif display == "number":
+		for num in range(1, 13):
+			df["month_" + num] = 0
+
