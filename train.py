@@ -66,3 +66,5 @@ categoricalColumns = ['DayOfWeek', 'Assortment', 'StoreType', 'StateHoliday', 'y
 for categories in categoricalColumns:
 	df = preprocessing.OneHotEncodeColumn(mergedSampleData, categories)
 print(df)
+
+

@@ -56,6 +56,7 @@ def SplitDateIntoDayMonthYear(df, columnName, dateFormat):
 	print(df)
 
 def SplitDateIntoDayMonthYear2(row, columnName, dateFormat):
+
 	if (dateFormat.upper() == "YYYY/MM/DD" or dateFormat.upper() == "YYYY-MM-DD"):
 		d = dateFormat.split('/')
 		split = ''
@@ -63,28 +64,15 @@ def SplitDateIntoDayMonthYear2(row, columnName, dateFormat):
 		if (len(d) == 3):
 			# date format is yyyy/mm/dd
 			split = '/'
-			#year = int(d[0])
-			#month = int(d[1])
-			#date = int(d[2])
-			#validFormat = true
 
 		else:
 			d = dateFormat.split('-')
 			if (len(d) == 3):
 				# date format is yyyy-mm-dd
 				split = '-'
-				#year = int(d[0])
-				#month = int(d[1])
-				#date = int(d[2])
-				#validFormat = true
 
-		if (split is not ''):
+		if (split != ''):
 			d = row[columnName].split(split)
 			columns = pandas.Series({columnName + "_year": d[0], columnName + "_month": d[1], columnName + "_date": d[2] })
 			return columns
-			#row[columnName + "_year"] = row['Date'].split(split)[0]
-			#for i, row in df.T.iteritems():
-
-				#df.loc[i, columnName + "_year"] = 
-				#df[columnName + "_month"]
 			
