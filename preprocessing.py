@@ -1,15 +1,23 @@
 import pandas as pd
 
-def OneHotEncodeColumn(df, columnName):
+def OneHotEncodeColumn(df, columnName, useLabelNameForColumn=False):
 	#find unique categories in data
-	#print(df[columnName])
+	# print(df[columnName])
 	categories = list(set(df[columnName]))
 	#print(categories)
 
 	labels = {}
-	for i, category in enumerate(categories):
-		df[columnName + "_" + str(i)] = 0
-		labels[category] = i
+	name = ""
+	if useLabelNameForColumn == True:
+		for i, category in enumerate(categories):
+			name = columnName + "_" + str(category)
+			df[name] = 0
+			labels[category] = name
+	else:
+		for i, category in enumerate(categories):
+			name = columnName + "_" + str(i)
+			df[name] = 0
+			labels[category] = name
 
 	#print(df)
 	#print(labels)
@@ -17,7 +25,8 @@ def OneHotEncodeColumn(df, columnName):
 	for i, row in df.T.iteritems():
 		#print(df.iloc[i][columnName])
 		#print(str(labels[df.iloc[i][columnName]]))
-		df.set_value(i, columnName + "_" + str(labels[df.iloc[i][columnName]]), 1)
+		# print(i)
+		df.set_value(i, str(labels[df.loc[i][columnName]]), 1)
 
 	#print(df)
 	return df
