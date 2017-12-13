@@ -84,6 +84,8 @@ for categories in dateColumns:
 	dfDateOHE = preprocessing.OneHotEncodeColumn(dfDate, categories, True)
 print(dfDateOHE)
 
+print(dfStore['PromoInterval'].unique())
+
 # dfMerged = pd.merge(dfTrain, dfStore, how='left', left_on=['Store'], right_on=['Store'])
 # print("\n\nMerged sample data: ")
 # print(dfMerged)
@@ -104,7 +106,7 @@ def CalculateCompetitionOpenDuration(y, m, cy, cm):
 				print('Unable to calculate duration. Invalid month parameters- y: {0}, m: {1}, cy: {2}, cm: {3}'.format(y, m, cy, cm))
 				return 0
 
-			
+
 
 
 

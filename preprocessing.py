@@ -1,11 +1,24 @@
 import pandas as pd
 
-def OneHotEncodeColumn(df, columnName, useLabelNameForColumn=False):
+def OneHotEncodeColumn(df, columnName, useLabelNameForColumn=False, removeCategories=None):
 	#find unique categories in data
 	# print(df[columnName])
-	categories = list(set(df[columnName]))
+	categories = set(df[columnName])
+
+	if removeCategories is not None:
+		for key in removeCategories:
+			if key in categories:
+				categories.remove(key)
+			else:
+				print('Category: [' + key + '] could not removed. It does not exist in column: ' + columnName)
+
+	
+	return OneHotEncodeHelper(df, columnName, useLabelNameForColumn, categories)		
 	#print(categories)
 
+	
+
+def OneHotEncodeHelper(df, columnName, useLabelNameForColumn, categories):
 	labels = {}
 	name = ""
 	if useLabelNameForColumn == True:
@@ -19,9 +32,6 @@ def OneHotEncodeColumn(df, columnName, useLabelNameForColumn=False):
 			df[name] = 0
 			labels[category] = name
 
-	#print(df)
-	#print(labels)
-
 	for i, row in df.T.iteritems():
 		#print(df.iloc[i][columnName])
 		#print(str(labels[df.iloc[i][columnName]]))
@@ -30,14 +40,6 @@ def OneHotEncodeColumn(df, columnName, useLabelNameForColumn=False):
 
 	#print(df)
 	return df
-
-# def SplitDateIntoDayMonthYear(args):
-# 	if len(args) == 3:
-# 		df = args[0]
-# 		columnName = args[1]
-# 		dateFormat = args[2]
-
-# 	return SplitDateIntoDayMonthYear(df, columnName, dateFormat)
 
 def ReceiveArgsInArray(argLength):
 	def decorator(func):
