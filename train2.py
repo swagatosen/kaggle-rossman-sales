@@ -4,6 +4,7 @@ import matplotlib
 import preprocessing
 
 import os
+import tensorflow
 
 # data files available for training
 # train.csv, store.csv
@@ -74,8 +75,12 @@ print(dfTrain)
 
 # timeit.timeit("preprocessing.ProcessDimensionDf(dfMerged['Date'], 'Date', outputColumns=dfDateColumns, " + 
 # 			"funcProcessColumn=preprocessing.SplitDateIntoDayMonthYear2, funcProcessColumnArgs=('YYYY/MM/DD'))", "import train2")
-
-dfDate = preprocessing.ProcessDimensionDf(dfTrain['Date'], 'Date', outputColumns=dfDateColumns, funcProcessColumn=preprocessing.SplitDateIntoDayMonthYear2, funcProcessColumnArgs=('YYYY-MM-DD'))
+# run this on mac
+# dfDate = preprocessing.ProcessDimensionDf(dfTrain['Date'], 'Date', outputColumns=dfDateColumns, 
+# 	funcProcessColumn=preprocessing.SplitDateIntoDayMonthYear2, funcProcessColumnArgs=('YYYY-MM-DD'))
+#run this on windows. not sure why this happens.
+dfDate = preprocessing.ProcessDimensionDf(dfTrain['Date'], 'Date', outputColumns=dfDateColumns, 
+	funcProcessColumn=preprocessing.SplitDateIntoDayMonthYear2, funcProcessColumnArgs=('DD/MM/YYYY'))
 dfDate.info()
 print(dfDate)
 dateColumns = ['year', 'month', 'date']
@@ -92,19 +97,7 @@ print(dfStore['PromoInterval'].unique())
 # print(dfMerged.info())
 # print(dfMerged.describe())
 
-def CalculateCompetitionOpenDuration(y, m, cy, cm):
-	if cy == 0:
-		return 0
-	else:
-		diffY = y - cy
-		diffM = m - cm
 
-		if diffM < 0:
-			if diffM >= -11:
-				diffM = 12 + diffM
-			else:
-				print('Unable to calculate duration. Invalid month parameters- y: {0}, m: {1}, cy: {2}, cm: {3}'.format(y, m, cy, cm))
-				return 0
 
 
 

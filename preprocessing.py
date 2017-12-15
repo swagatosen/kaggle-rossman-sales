@@ -80,36 +80,46 @@ def SplitDateIntoDayMonthYear(df, columnName, dateFormat):
 
 		print(df)
 
-ReceiveArgsInArray(1)
+# @ReceiveArgsInArray(1)
 def SplitDateIntoDayMonthYear2(date, dateFormat):
 	try:
-		if (dateFormat.upper() == "YYYY/MM/DD" or dateFormat.upper() == "YYYY-MM-DD"):
-			d = dateFormat.split('/')
-			split = ''
+		d = dateFormat.split('/')
+		split = ''
 
+		if (len(d) == 3):
+			# date format is yyyy/mm/dd
+			split = '/'
+
+		else:
+			d = dateFormat.split('-')
 			if (len(d) == 3):
-				# date format is yyyy/mm/dd
-				split = '/'
+				# date format is yyyy-mm-dd
+				split = '-'
 
-			else:
-				d = dateFormat.split('-')
-				if (len(d) == 3):
-					# date format is yyyy-mm-dd
-					split = '-'
+		if (split != ''):
+			df = dateFormat.upper().split(split)
+			# print(dateFormat)
+			# print(df)
+			year = df.index('YYYY')
+			month = df.index('MM')
+			dateNumber = df.index('DD')
+			# print(str(year) + ',' + str(month) + ',' + str(dateNumber))
 
-			if (split != ''):
-				d = date.split(split)
-				assert len(d) == 3
+			d = date.split(split)
+			assert len(d) == 3
 
-				# columns = pandas.Series({columnName + "_year": d[0], columnName + "_month": d[1], columnName + "_date": d[2] })
-				# print(columns)
-				# return columns
-				return [d[0], d[1], d[2]]
+			# columns = pandas.Series({columnName + "_year": d[0], columnName + "_month": d[1], columnName + "_date": d[2] })
+			# print(columns)
+			# return columns
+			return [d[year], d[month], d[dateNumber]]
 
 	except AssertionError:
 		print("Test failed in SplitDateIntoDayMonthYear2. d: ")
 		print(d)
 		print("split: " + split)
+
+	except ValueError:
+		print('Unable to parse date in SplitDateIntoDayMonthYear2. Date format given not supported.')
 
 def CreateEmptyMonthColumns(df, display="number"):
 	if display == "name":
@@ -149,6 +159,7 @@ def ProcessDimensionDf(column_chunk, columnName, **kwargs):
 					# print(data)
 					if not output.index.contains(data):
 						#create new row in df with this index
+						# print(func)
 						output.loc[data] = func(data, func_args)
 				# except:
 				# 	print("column name: " + columnName + " does not exist in this df. Terminating processing.")
