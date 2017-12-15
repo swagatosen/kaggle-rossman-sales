@@ -63,7 +63,7 @@ dfTrain['year'] = dfTrain['Date'].apply(lambda d: str(d)[:4])
 dfTrain['month'] = dfTrain['Date'].apply(lambda d: str(d)[5:7])
 dfTrain['date'] = dfTrain['Date'].apply(lambda d: str(d)[8:])
 
-dfTrain = pd.merge(dfTrain, dfStore, how='left', left_on=['Store'], right_on=['Store'])
+# dfTrain = pd.merge(dfTrain, dfStore, how='left', left_on=['Store'], right_on=['Store'])
 
 # dfTrain['hasCompetition'] = dfTrain[['year', 'month', 'CompetitionOpenSinceYear', 'CompetitionOpenSinceMonth']]
 # 		.apply(lambda y, m, cy, cm: 1 if y >= cy )
@@ -76,11 +76,11 @@ print(dfTrain)
 # timeit.timeit("preprocessing.ProcessDimensionDf(dfMerged['Date'], 'Date', outputColumns=dfDateColumns, " + 
 # 			"funcProcessColumn=preprocessing.SplitDateIntoDayMonthYear2, funcProcessColumnArgs=('YYYY/MM/DD'))", "import train2")
 # run this on mac
-# dfDate = preprocessing.ProcessDimensionDf(dfTrain['Date'], 'Date', outputColumns=dfDateColumns, 
-# 	funcProcessColumn=preprocessing.SplitDateIntoDayMonthYear2, funcProcessColumnArgs=('YYYY-MM-DD'))
-#run this on windows. not sure why this happens.
 dfDate = preprocessing.ProcessDimensionDf(dfTrain['Date'], 'Date', outputColumns=dfDateColumns, 
-	funcProcessColumn=preprocessing.SplitDateIntoDayMonthYear2, funcProcessColumnArgs=('DD/MM/YYYY'))
+	funcProcessColumn=preprocessing.SplitDateIntoDayMonthYear2, funcProcessColumnArgs=('YYYY-MM-DD'))
+#run this on windows. not sure why this happens.
+# dfDate = preprocessing.ProcessDimensionDf(dfTrain['Date'], 'Date', outputColumns=dfDateColumns, 
+# 	funcProcessColumn=preprocessing.SplitDateIntoDayMonthYear2, funcProcessColumnArgs=('DD/MM/YYYY'))
 dfDate.info()
 print(dfDate)
 dateColumns = ['year', 'month', 'date']
@@ -91,11 +91,28 @@ print(dfDateOHE)
 
 print(dfStore['PromoInterval'].unique())
 
-# dfMerged = pd.merge(dfTrain, dfStore, how='left', left_on=['Store'], right_on=['Store'])
-# print("\n\nMerged sample data: ")
-# print(dfMerged)
-# print(dfMerged.info())
-# print(dfMerged.describe())
+categoricalColumns = ['Assortment', 'StoreType'];
+print("One hot encoding categorical variables: " + str(categoricalColumns))
+for categories in categoricalColumns:
+	dfStore = preprocessing.OneHotEncodeColumn(dfStore, categories)
+print(dfStore)
+
+print("One hot encoding categorical variables: PromoInterval")
+dfStore = preprocessing.OneHotEncodeColumn(dfStore, 'PromoInterval', removeCategories={'nan': NaN})
+print(dfStore)
+
+print("One hot encoding categorical variables: DayOfWeek, StateHoliday")
+for categories in ['DayOfWeek', 'StateHoliday']:
+	dfTrain = preprocessing.OneHotEncodeColumn(dfTrain, categories)
+print(dfTrain)
+
+dfMerged = pd.merge(dfTrain, dfStore, how='left', left_on=['Store'], right_on=['Store'])
+print("\n\nMerged sample data: ")
+print(dfMerged)
+print(dfMerged.info())
+print(dfMerged.describe())
+
+
 
 
 

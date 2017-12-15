@@ -3,14 +3,17 @@ import pandas as pd
 def OneHotEncodeColumn(df, columnName, useLabelNameForColumn=False, removeCategories=None):
 	#find unique categories in data
 	# print(df[columnName])
+	print("Starting OneHotEncodeColumn for column: " + columnName)
 	categories = set(df[columnName])
-
+	print("Categories in column {0}: {1}".format(columnName, str(categories)))
 	if removeCategories is not None:
 		for key in removeCategories:
-			if key in categories:
-				categories.remove(key)
+			print("remove category: {0} from column: {1}".format(removeCategories[key], columnName))
+			if removeCategories[key] in categories:
+				print("Found category to be removed before one hot encoding: " + str(removeCategories[key]))
+				categories.remove(removeCategories[key])
 			else:
-				print('Category: [' + key + '] could not removed. It does not exist in column: ' + columnName)
+				print('Category: [' + key + '] could not be removed. It does not exist in column: ' + columnName)
 
 	
 	return OneHotEncodeHelper(df, columnName, useLabelNameForColumn, categories)		
@@ -19,6 +22,7 @@ def OneHotEncodeColumn(df, columnName, useLabelNameForColumn=False, removeCatego
 	
 
 def OneHotEncodeHelper(df, columnName, useLabelNameForColumn, categories):
+	print("Starting OneHotEncodeHelper for column: " + columnName)
 	labels = {}
 	name = ""
 	if useLabelNameForColumn == True:
@@ -32,11 +36,26 @@ def OneHotEncodeHelper(df, columnName, useLabelNameForColumn, categories):
 			df[name] = 0
 			labels[category] = name
 
-	for i, row in df.T.iteritems():
-		#print(df.iloc[i][columnName])
-		#print(str(labels[df.iloc[i][columnName]]))
-		# print(i)
-		df.set_value(i, str(labels[df.loc[i][columnName]]), 1)
+	for label in labels:
+		df[labels[label]] = (df[columnName]==label).astype(int)
+	#df[labels[df[columnName]]] = 1
+	# d = df.copy()
+	# d[columnName].map(lambda x: df[labels[x]] = 1)
+	# print("version map")
+	# print(d)
+	# d = df.copy()
+	# d[columnName].apply(lambda x: x[labels[x[columnName]]] = 1)
+	# print("version apply 1")
+	# print(d)
+	# # d = df.copy()
+	# df[columnName].apply(lambda x: x[labels[x]] = 1)
+	# print("version apply 2")
+	# print(df)
+	# for i, row in df.T.iteritems():
+	# 	#print(df.iloc[i][columnName])
+	# 	#print(str(labels[df.iloc[i][columnName]]))
+	# 	# print(i)
+	# 	df.set_value(i, str(labels[df.loc[i][columnName]]), 1)
 
 	#print(df)
 	return df
