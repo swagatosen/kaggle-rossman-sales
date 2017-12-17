@@ -38,19 +38,7 @@ def OneHotEncodeHelper(df, columnName, useLabelNameForColumn, categories):
 
 	for label in labels:
 		df[labels[label]] = (df[columnName]==label).astype(int)
-	#df[labels[df[columnName]]] = 1
-	# d = df.copy()
-	# d[columnName].map(lambda x: df[labels[x]] = 1)
-	# print("version map")
-	# print(d)
-	# d = df.copy()
-	# d[columnName].apply(lambda x: x[labels[x[columnName]]] = 1)
-	# print("version apply 1")
-	# print(d)
-	# # d = df.copy()
-	# df[columnName].apply(lambda x: x[labels[x]] = 1)
-	# print("version apply 2")
-	# print(df)
+	
 	# for i, row in df.T.iteritems():
 	# 	#print(df.iloc[i][columnName])
 	# 	#print(str(labels[df.iloc[i][columnName]]))
@@ -195,3 +183,12 @@ def CreateEmptyDf(**kwargs):
 	if columns is not None:
 		output = pd.DataFrame(columns=columns)
 		return output
+
+def AnalyseDfForNaN(df):
+	if df is not None:
+		# dfInfo = pd.DataFrame(data=df.dtypes, columns=df.columns.values, index={0: 'column type'})
+		dfInfo = pd.DataFrame(data=df.dtypes, index={0: 'column type'})
+		nullCount = df.isnull().sum()
+		nullPercent = nullCount / df.shape[0] * 100
+		dfInfo = dfInfo.append(pd.DataFrame(data=[df.isnull().sum(), nullPercent], index={0: 'null value count', 1: 'null %'}))
+		return dfInfo
