@@ -3,8 +3,8 @@ import pandas as pd
 import matplotlib
 import preprocessing
 import math
-import os
-import tensorflow
+import os 
+import tensorflow as tf
 
 # data files available for training
 # train.csv, store.csv
@@ -51,7 +51,15 @@ print(preprocessing.AnalyseDfForNaN(dfStore))
 
 dfStore['Promo2SinceWeek'] = dfStore['Promo2SinceWeek'].map(lambda x: 0 if math.isnan(x) else x)
 dfStore['Promo2SinceYear'] = dfStore['Promo2SinceYear'].map(lambda x: 0 if math.isnan(x) else x)
-dfStore['PromoInterval'] = dfStore['PromoInterval'].map(lambda x: 0 if x is None else x)
+
+print(dfStore['PromoInterval'])
+dfStore['PromoInterval'] = dfStore['PromoInterval'].map(lambda x: 0 if x is np.nan else x)
+
+print(dfStore['PromoInterval'])
+
+dfStore['CompetitionOpenSinceYear'] = dfStore['CompetitionOpenSinceYear'].map(lambda x: 99999 if math.isnan(x) else x)
+dfStore['CompetitionOpenSinceMonth'] = dfStore['CompetitionOpenSinceMonth'].map(lambda x: 0 if math.isnan(x) else x)
+dfStore['CompetitionDistance'] = dfStore['CompetitionDistance'].map(lambda x: 9999999 if math.isnan(x) else x)
 
 print("Analysing train df: ")
 print(preprocessing.AnalyseDfForNaN(dfTrain))
@@ -74,6 +82,7 @@ print(dfStore['PromoInterval'].unique())
 # preprocessing.SplitDateIntoDayMonthYear(dfMerged, 'Date', 'YYYY-MM-DD')
 
 dfDateColumns = ['year', 'month', 'date']
+categoricalVariables = []
 # run the next 3 lines of code for mac
 # dfTrain['year'] = dfTrain['Date'].apply(lambda d: str(d)[:4])
 # dfTrain['month'] = dfTrain['Date'].apply(lambda d: str(d)[5:7])
@@ -97,11 +106,11 @@ dfDateColumns = ['year', 'month', 'date']
 # timeit.timeit("preprocessing.ProcessDimensionDf(dfMerged['Date'], 'Date', outputColumns=dfDateColumns, " + 
 # 			"funcProcessColumn=preprocessing.SplitDateIntoDayMonthYear2, funcProcessColumnArgs=('YYYY/MM/DD'))", "import train2")
 # run this on mac
-# dfDate = preprocessing.ProcessDimensionDf(dfTrain['Date'], 'Date', outputColumns=dfDateColumns, 
-# 	funcProcessColumn=preprocessing.SplitDateIntoDayMonthYear2, funcProcessColumnArgs=('YYYY-MM-DD'))
-#run this on windows. not sure why this happens.
 dfDate = preprocessing.ProcessDimensionDf(dfTrain['Date'], 'Date', outputColumns=dfDateColumns, 
-	funcProcessColumn=preprocessing.SplitDateIntoDayMonthYear2, funcProcessColumnArgs=('DD/MM/YYYY'))
+	funcProcessColumn=preprocessing.SplitDateIntoDayMonthYear2, funcProcessColumnArgs=('YYYY-MM-DD'))
+#run this on windows. not sure why this happens.
+# dfDate = preprocessing.ProcessDimensionDf(dfTrain['Date'], 'Date', outputColumns=dfDateColumns, 
+# 	funcProcessColumn=preprocessing.SplitDateIntoDayMonthYear2, funcProcessColumnArgs=('DD/MM/YYYY'))
 dfDate.info()
 # print(dfDate)
 dateColumns = ['year', 'month', 'date']
@@ -114,6 +123,7 @@ categoricalColumns = ['Assortment', 'StoreType'];
 print("One hot encoding categorical variables: " + str(categoricalColumns))
 for categories in categoricalColumns:
 	dfStore = preprocessing.OneHotEncodeColumn(dfStore, categories)
+	categoricalVariables.append(categories)
 # print(dfStore)
 
 print("One hot encoding categorical variables: PromoInterval")
@@ -129,25 +139,33 @@ dfMerged = pd.merge(dfTrain, dfStore, how='left', left_on=['Store'], right_on=['
 dfMerged = pd.merge(dfMerged, dfDate, how='left', left_on=['Date'], right_index=True)
 print("\n\nMerged sample data: ")
 # print(dfMerged)
-print(dfMerged.info())
-print(dfMerged.describe())
+# print(dfMerged.info())
+# print(dfMerged.describe())
 
 dfMerged['Promo2Running'] = (dfMerged['year'].astype(int) > dfMerged['Promo2SinceYear']).astype(int)
 # print(dfMerged[['Date', 'year', 'month', 'Store', 'Promo2', 'Promo2SinceWeek', 'Promo2SinceYear', 'Promo2StartMonth', 'Promo2Running']])
-
+dfMerged['HasCompetition'] = ((dfMerged['year'].astype(int) > dfMerged['CompetitionOpenSinceYear']) | 
+		((dfMerged['year'].astype(int) == dfMerged['CompetitionOpenSinceYear']) & dfMerged['month'] > dfMerged['CompetitionOpenSinceMonth'])).astype(int)
 
 weeksPerMonth = 52 / 12
 dfMerged['Promo2StartMonth'] = dfMerged['Promo2SinceWeek'].map(lambda x: math.ceil(x / weeksPerMonth))
 dfMerged['Promo2Running'] = (dfMerged['Promo2Running'] | (dfMerged['year'].astype(int) == dfMerged['Promo2SinceYear'].astype(int)) & 
 		(dfMerged['Promo2StartMonth'] >= dfMerged['month'].astype(int))).astype(int)
 
-dfCheck = dfMerged[['Date', 'year', 'month', 'Store', 'Promo2', 'Promo2SinceWeek', 'Promo2SinceYear', 'Promo2StartMonth', 'Promo2Running']]
+dfMerged['CompetitionOpenDuration'] = (dfMerged['CompetitionOpenSinceYear'] < 99999).astype(int) * (dfMerged['year'].astype(int) - dfMerged['CompetitionOpenSinceYear'])
+dfCheck = dfMerged[['Date', 'year', 'month', 'Store', 'Promo2', 'Promo2SinceWeek', 'Promo2SinceYear', 'Promo2StartMonth', 'Promo2Running', 
+'CompetitionOpenSinceYear', 'CompetitionOpenSinceMonth', 'CompetitionOpenDuration']]
 print(dfCheck)
 
-# print("Analysing merged df: ")
-# print(preprocessing.AnalyseDfForNaN(dfMerged))
+print("Analysing merged df: ")
+print(preprocessing.AnalyseDfForNaN(dfMerged))
 
 # print(dfMerged['Store'])
+
+# training code
+dfTrain_Y = dfMerged['Sales']
+del dfMerged['Sales']
+dfTrain_X = dfMerged[:0.8*len(dfMerged)]
 
 
 
