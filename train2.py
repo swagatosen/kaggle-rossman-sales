@@ -5,6 +5,8 @@ import preprocessing
 import math
 import os 
 import tensorflow as tf
+import sklearn as sk
+import swagML as sml
 
 # data files available for training
 # train.csv, store.csv
@@ -117,6 +119,7 @@ dateColumns = ['year', 'month', 'date']
 print("One hot encoding date: ")
 for categories in dateColumns:
 	dfDateOHE = preprocessing.OneHotEncodeColumn(dfDate, categories, True)
+	categoricalVariables.append(categories)
 # print(dfDateOHE)
 
 categoricalColumns = ['Assortment', 'StoreType'];
@@ -128,11 +131,13 @@ for categories in categoricalColumns:
 
 print("One hot encoding categorical variables: PromoInterval")
 dfStore = preprocessing.OneHotEncodeColumn(dfStore, 'PromoInterval')
+categoricalVariables.append('PromoInterval')
 # print(dfStore)
 
 print("One hot encoding categorical variables: DayOfWeek, StateHoliday")
 for categories in ['DayOfWeek', 'StateHoliday']:
 	dfTrain = preprocessing.OneHotEncodeColumn(dfTrain, categories)
+	categoricalVariables.append(categories)
 # print(dfTrain)
 
 dfMerged = pd.merge(dfTrain, dfStore, how='left', left_on=['Store'], right_on=['Store'])
@@ -163,15 +168,61 @@ print(preprocessing.AnalyseDfForNaN(dfMerged))
 # print(dfMerged['Store'])
 
 # training code
-dfTrain_Y = dfMerged['Sales']
-del dfMerged['Sales']
-dfTrain_X = dfMerged[:0.8*len(dfMerged)]
+# 
+
+epochs = 10
+batchSize = 100
+trainingSampleSize = int(0.8*dfMerged.shape[0])
+
+print("training sample size: " + str(trainingSampleSize))
+
+for i in range(epochs):
+	print("------------------------------------------------")
+	print("Starting epoch number: " + str(i))
+
+	print("Shuffling data set")
+	dfShuffled = sml.ShuffleDf(dfMerged)
+	print("Shuffling completed")
+
+	print("Creating test and validation sets")
+	dfTrain_X = dfShuffled[:trainingSampleSize]
+	print("dfTrain_x shape: " + str(dfShuffled.shape))
+	dfTrain_Y = dfTrain_X['Sales']
+
+	dfValidation_X = dfShuffled[trainingSampleSize:]
+	dfValidation_Y = dfValidation_X['Sales']
 
 
+	for i in categoricalVariables:
+		del dfTrain_X[i]
+		del dfValidation_X[i]
+	print("dfTrain_x shape: " + str(dfTrain_X.shape))
 
+	del dfTrain_X['Date']
+	del dfTrain_X['Customers']
+	del dfTrain_X['Sales']
+	del dfValidation_X['Sales']
 
+	print("Test and validation set creation completed")
 
+	# setup tensorflow
+	input_units = dfTrain_X.shape[1] 
+	number_of_hidden_layers = 4
+	layer_units = {1: dfTrain_X.shape[1], 2: 50, 3: 50, 4: 20, 5: 10}
 
+	
+	
+
+	print(dfMerged)
+
+	print("dfTrain_x")
+	print(dfTrain_X)
+	print("dfTrain_y")
+	print(dfTrain_Y)
+	print("dfValildation_x")
+	print(dfValidation_X)
+	print("dfValidation_y")
+	print(dfValidation_Y)
 
 
 

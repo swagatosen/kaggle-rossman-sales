@@ -6,7 +6,7 @@ import sklearn
 # print(testArr)
 # print(shuffled)
 
-def ShuffleDf(df):
+def shuffleDf(df):
 	result = None
 	try: 
 		if df is not None:
