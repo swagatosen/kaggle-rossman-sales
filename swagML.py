@@ -6,7 +6,7 @@ import sklearn
 # print(testArr)
 # print(shuffled)
 
-def ShuffleDf(df):
+def Shuffle(df):
 	result = None
 	try: 
 		if df is not None:
@@ -17,3 +17,12 @@ def ShuffleDf(df):
 		print("Shuffling failed for variable: ")
 		print(df)
 		return None
+
+def TestShuffle(input):
+	print("\n\nprinting original df input: ")
+	print(input)
+	input = input.as_matrix()
+	print("\n\nprinting numpy matrix form: ")
+	print(input)
+	print("\n\nprinting shuffled numpy matrix: ")
+	print(Shuffle(input))

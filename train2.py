@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-import matplotlib
+import matplotlib as plt
 import preprocessing
 import math
 import os 
@@ -108,11 +108,11 @@ categoricalVariables = []
 # timeit.timeit("preprocessing.ProcessDimensionDf(dfMerged['Date'], 'Date', outputColumns=dfDateColumns, " + 
 # 			"funcProcessColumn=preprocessing.SplitDateIntoDayMonthYear2, funcProcessColumnArgs=('YYYY/MM/DD'))", "import train2")
 # run this on mac
-dfDate = preprocessing.ProcessDimensionDf(dfTrain['Date'], 'Date', outputColumns=dfDateColumns, 
-	funcProcessColumn=preprocessing.SplitDateIntoDayMonthYear2, funcProcessColumnArgs=('YYYY-MM-DD'))
-#run this on windows. not sure why this happens.
 # dfDate = preprocessing.ProcessDimensionDf(dfTrain['Date'], 'Date', outputColumns=dfDateColumns, 
-# 	funcProcessColumn=preprocessing.SplitDateIntoDayMonthYear2, funcProcessColumnArgs=('DD/MM/YYYY'))
+# 	funcProcessColumn=preprocessing.SplitDateIntoDayMonthYear2, funcProcessColumnArgs=('YYYY-MM-DD'))
+#run this on windows. not sure why this happens.
+dfDate = preprocessing.ProcessDimensionDf(dfTrain['Date'], 'Date', outputColumns=dfDateColumns, 
+	funcProcessColumn=preprocessing.SplitDateIntoDayMonthYear2, funcProcessColumnArgs=('DD/MM/YYYY'))
 dfDate.info()
 # print(dfDate)
 dateColumns = ['year', 'month', 'date']
@@ -157,75 +157,181 @@ dfMerged['Promo2StartMonth'] = dfMerged['Promo2SinceWeek'].map(lambda x: math.ce
 dfMerged['Promo2Running'] = (dfMerged['Promo2Running'] | (dfMerged['year'].astype(int) == dfMerged['Promo2SinceYear'].astype(int)) & 
 		(dfMerged['Promo2StartMonth'] >= dfMerged['month'].astype(int))).astype(int)
 
-dfMerged['CompetitionOpenDuration'] = (dfMerged['CompetitionOpenSinceYear'] < 99999).astype(int) * (dfMerged['year'].astype(int) - dfMerged['CompetitionOpenSinceYear'])
+dfMerged['CompetitionOpenDuration'] = ((dfMerged['year'].astype(int) >= dfMerged['CompetitionOpenSinceYear']).astype(int) * (dfMerged['year'].astype(int) - dfMerged['CompetitionOpenSinceYear'])).astype(int)
 dfCheck = dfMerged[['Date', 'year', 'month', 'Store', 'Promo2', 'Promo2SinceWeek', 'Promo2SinceYear', 'Promo2StartMonth', 'Promo2Running', 
 'CompetitionOpenSinceYear', 'CompetitionOpenSinceMonth', 'CompetitionOpenDuration']]
-print(dfCheck)
-
+# print(dfCheck)
+# print(dfMerged)
 print("Analysing merged df: ")
 print(preprocessing.AnalyseDfForNaN(dfMerged))
 
 # print(dfMerged['Store'])
 
 # training code
-# 
-
+seed = 128
 epochs = 10
-batchSize = 100
+batchSize = 500
 trainingSampleSize = int(0.8*dfMerged.shape[0])
+numberOfBatches = math.ceil(trainingSampleSize / batchSize)
+dfTrain = dfMerged[:trainingSampleSize]
+batch_inteval = math.ceil(0.2 * numberOfBatches)
 
+dfValidation_X = dfMerged[trainingSampleSize:]
+dfValidation_Y = dfValidation_X['Sales']
+
+for i in categoricalVariables:
+	del dfTrain[i]
+	del dfValidation_X[i]
+
+del dfTrain['Date']
+del dfTrain['Customers']
+del dfValidation_X['Sales']
+
+print("dfTrain_x shape: " + str(dfTrain.shape))
 print("training sample size: " + str(trainingSampleSize))
+# SetupModel()
 
+print("Setting up model")
+# setup tensorflow
+input_units = dfTrain.shape[1] - 1
+print("input dimension: " + str(input_units))
+output_units = 1
+number_of_hidden_layers = 4
+output_layer_number = number_of_hidden_layers + 1
+input_batch_size = 500
+layer_units_size = [input_units, 50, 40, 30, 20, output_units]
+learning_rate = 0.01
+
+# define input and required output
+x = tf.placeholder(tf.float32, [input_batch_size, layer_units_size[0]])
+y = tf.placeholder(tf.float32, [input_batch_size])
+
+# weights and biases for hidden layers
+weights = {}
+biases = {}
+for i in range(len(layer_units_size) - 1):
+	weights[i] = tf.Variable(tf.random_normal([layer_units_size[i], layer_units_size[i + 1]], seed=seed), name='w_' + str(i) + '_' + str(i + 1))
+	biases[i] = tf.Variable(tf.random_normal([layer_units_size[i + 1]], seed=seed), name='b_' + str(i) + '_' + str(i + 1))
+	print("weights[{0}]- name: {1} shape: {2}".format(i, weights[i].name, tf.shape(weights[i])))
+	print("biases[{0}]- name: {1} shape: {2}".format(i, biases[i].name, tf.shape(biases[i])))
+
+# create operation to calculate each hidden layer
+layers = {}
+# layer 2 (hidden layer 1): input to hidden layer 1
+layers[0] = x
+# layers[1] = tf.nn.relu(tf.add(tf.matmul(x, weights[1])))
+for i in range(len(layer_units_size) - 2):
+	layers[i + 1] = tf.nn.relu(tf.add(tf.matmul(layers[i], weights[i]), biases[i]))
+
+# output layer
+layers[output_layer_number] = tf.add(tf.matmul(layers[number_of_hidden_layers], weights[number_of_hidden_layers]), biases[number_of_hidden_layers])
+
+# loss function - for regression this should be squared loss function
+loss = tf.reduce_mean(tf.square(layers[output_layer_number] - y), name='mean_cost')
+optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
+
+print("Model setup completed")
+
+# train model
+init = tf.global_variables_initializer()
+sess = tf.Session()
+sess.run(init)
+
+loss_plot = []
+index = 0
+end = 0
+#plt.plot(range(epochs * trainingSampleSize), loss_plot, label='loss')
+
+# go through the epochs to train model
 for i in range(epochs):
 	print("------------------------------------------------")
 	print("Starting epoch number: " + str(i))
 
 	print("Shuffling data set")
-	dfShuffled = sml.ShuffleDf(dfMerged)
+	dfShuffled = sml.Shuffle(dfTrain)
 	print("Shuffling completed")
 
-	print("Creating test and validation sets")
-	dfTrain_X = dfShuffled[:trainingSampleSize]
-	print("dfTrain_x shape: " + str(dfShuffled.shape))
-	dfTrain_Y = dfTrain_X['Sales']
+	for j in range(numberOfBatches):
 
-	dfValidation_X = dfShuffled[trainingSampleSize:]
-	dfValidation_Y = dfValidation_X['Sales']
+		#print("Creating test and validation sets")
+		dfTrain_X = dfShuffled[:trainingSampleSize]
+		#print("dfTrain_x shape: " + str(dfShuffled.shape))
+		dfTrain_Y = dfTrain_X['Sales']
+		del dfTrain_X['Sales']
+
+		# create batch
+		if j == (numberOfBatches - 1):
+			end = trainingSampleSize
+			print("fetching last batch for this epoch. index = " + str(i))
+			
+		else:
+			end = batchSize * (j + 1)
+			# print("slice detail: {0}:{1}".format(index, end))
+			
+		train_matrix_x = dfTrain_X[index:end].as_matrix()
+		train_matrix_y = dfTrain_Y[index:end].as_matrix()
+		index = end
+		sess.run(optimizer, feed_dict={x: train_matrix_x, y: train_matrix_y})
+		l = sess.run(loss, feed_dict={x: train_matrix_x, y: train_matrix_y})
+		loss_plot.append(l)
 
 
-	for i in categoricalVariables:
-		del dfTrain_X[i]
-		del dfValidation_X[i]
-	print("dfTrain_x shape: " + str(dfTrain_X.shape))
+		if j % batch_inteval == 0:
+			print("Progress: {0}\% Completed batch number: {1}".format(str(math.ceil(j/numberOfBatches * 100)), str(i)))
+			
+		
+		if j % 20 == 0:
+			print("epoch {0} batch number: {1} loss: {2}".format(i, j, l))
+			#plt.plot(range(index), loss_plot, label='loss')
+	#print("Test and validation set creation completed")
 
-	del dfTrain_X['Date']
-	del dfTrain_X['Customers']
-	del dfTrain_X['Sales']
-	del dfValidation_X['Sales']
+print("Training completed!")
+print("------------------------------------------------")
+# print("\n\nTest on validation set")	
+# validation_x_matrix = dfValidation_X.as_matrix()
+# validation_y_matrix = dfValidation_Y.as_matrix()
 
-	print("Test and validation set creation completed")
+# pred_temp = tf.equal(tf.argmax())
 
+
+def SetupModel():
+	print("Setting up model")
 	# setup tensorflow
 	input_units = dfTrain_X.shape[1] 
+	output_units = 1
 	number_of_hidden_layers = 4
-	layer_units = {1: dfTrain_X.shape[1], 2: 50, 3: 50, 4: 20, 5: 10}
+	output_layer_number = number_of_hidden_layers + 1
+	input_batch_size = 500
+	layer_units_size = [input_units, 50, 40, 30, 20, output_units]
+	learning_rate = 0.01
 
+	# define input and required output
+	x = tf.placeholder(tf.float32, [input_batch_size, layer_units_size[0]])
+	y = tf.placeholder(tf.float32, [input_batch_size])
 	
-	
+	# weights and biases for hidden layers
+	weights = {}
+	biases = {}
+	for i in range(len(layer_units_size)):
+		weights[i] = tf.Variable(tf.random_normal([layer_units_size[i], layer_units_size[i + 1]], seed=seed), name='w_' + str(i) + '_' + str(i + 1))
+		biases[i] = tf.Variable(tf.random_normal(layer_units_size[i], seed=seed), name='b_' + str(i) + '_' + str(i + 1))
 
-	print(dfMerged)
+	# create operation to calculate each hidden layer
+	layers = {}
+	# layer 2 (hidden layer 1): input to hidden layer 1
+	layers[0] = x
+	# layers[1] = tf.nn.relu(tf.add(tf.matmul(x, weights[1])))
+	for i in range(len(layer_units_size) - 1):
+		layers[i + 1] = tf.nn.relu(tf.add(tf.matmul(layers[i], weights[i]), biases[i]))
 
-	print("dfTrain_x")
-	print(dfTrain_X)
-	print("dfTrain_y")
-	print(dfTrain_Y)
-	print("dfValildation_x")
-	print(dfValidation_X)
-	print("dfValidation_y")
-	print(dfValidation_Y)
+	# output layer
+	layers[output_layer_number] = tf.add(tf.matmul(layers[number_of_hidden_layers], weights[number_of_hidden_layers]), biases[number_of_hidden_layers])
 
+	# loss function - for regression this should be squared loss function
+	loss = tf.reduce_mean(tf.square(layers[output_layer_number] - y), name='mean_cost')
+	optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
 
-
+	print("Model setup completed")
 
 
 
