@@ -169,7 +169,7 @@ print(preprocessing.AnalyseDfForNaN(dfMerged))
 
 # training code
 seed = 128
-epochs = 10
+epochs = 5
 batchSize = 500
 trainingSampleSize = int(0.8*dfMerged.shape[0])
 numberOfBatches = math.ceil(trainingSampleSize / batchSize)
