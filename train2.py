@@ -238,8 +238,6 @@ sess = tf.Session()
 sess.run(init)
 
 loss_plot = []
-index = 0
-end = 0
 #plt.plot(range(epochs * trainingSampleSize), loss_plot, label='loss')
 
 # go through the epochs to train model
@@ -251,7 +249,9 @@ for i in range(epochs):
 	dfShuffled = sml.Shuffle(dfTrain)
 	print("Shuffling completed")
 
-	for j in range(numberOfBatches):
+	index = 0
+	end = 0
+	for j in range(numberOfBatches - 1):
 
 		#print("Creating test and validation sets")
 		dfTrain_X = dfShuffled[:trainingSampleSize]
@@ -260,19 +260,21 @@ for i in range(epochs):
 		del dfTrain_X['Sales']
 
 		# create batch
-		if j == (numberOfBatches - 1):
-			end = trainingSampleSize
-			print("fetching last batch for this epoch. index = " + str(i))
+		# if j == (numberOfBatches - 1):
+		# 	end = trainingSampleSize
+		# 	print("fetching last batch for this epoch. index = " + str(i))
 			
-		else:
-			end = batchSize * (j + 1)
+		# else:
+			# end = batchSize * (j + 1)
 			# print("slice detail: {0}:{1}".format(index, end))
-			
+		
+		end = batchSize * (j + 1)	
 		train_matrix_x = dfTrain_X[index:end].as_matrix()
 		train_matrix_y = dfTrain_Y[index:end].as_matrix()
 		index = end
 		sess.run(optimizer, feed_dict={x: train_matrix_x, y: train_matrix_y})
 		l = sess.run(loss, feed_dict={x: train_matrix_x, y: train_matrix_y})
+		l_sqrt = math.sqrt(l)
 		loss_plot.append(l)
 
 
@@ -281,7 +283,7 @@ for i in range(epochs):
 			
 		
 		if j % 20 == 0:
-			print("epoch {0} batch number: {1} loss: {2}".format(i, j, l))
+			print("epoch {0} batch number: {1} loss: {2} loss_sqrt: {3:.2f}".format(i, j, l, l_sqrt))
 			#plt.plot(range(index), loss_plot, label='loss')
 	#print("Test and validation set creation completed")
 
