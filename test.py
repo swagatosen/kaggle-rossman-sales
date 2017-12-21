@@ -1,19 +1,25 @@
 import sklearn
+import swagML as sml
+import numpy as np
+import matplotlib.pyplot as plt
 
-# testArr = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+# testArr = [1, 1, 1, 1, 5, 6, 7, 8, 9, 10]
 # shuffled = sklearn.utils.shuffle(testArr)
 
 # print(testArr)
 # print(shuffled)
 
-def shuffleDf(df):
-	result = None
-	try: 
-		if df is not None:
-			result = sklearn.utils.shuffle(df)
-		
-		return result
-	except:
-		print("Shuffling failed for variable: ")
-		print(df)
-		return None
+for i in range(5):
+	x = np.array(range(10))
+	y1 = np.random.rand(10)
+	y2 = np.random.rand(10)
+
+	plt.subplot(1, 5, i + 1)
+	plt.plot(x, y1, label='y1 i = ' + str(i))
+	plt.plot(x, y2, label='y2 i = ' + str(i))
+	plt.legend()
+	# plt.plot(x, y1, label='y1')
+	# plt.plot(x, y2, label='y2')
+
+
+plt.show()

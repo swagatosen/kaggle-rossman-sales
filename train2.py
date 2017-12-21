@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
-import matplotlib as plt
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 import preprocessing
 import math
 import os 
@@ -142,7 +143,7 @@ for categories in ['DayOfWeek', 'StateHoliday']:
 
 dfMerged = pd.merge(dfTrain, dfStore, how='left', left_on=['Store'], right_on=['Store'])
 dfMerged = pd.merge(dfMerged, dfDate, how='left', left_on=['Date'], right_index=True)
-print("\n\nMerged sample data: ")
+# print("\n\nMerged sample data: ")
 # print(dfMerged)
 # print(dfMerged.info())
 # print(dfMerged.describe())
@@ -162,15 +163,15 @@ dfCheck = dfMerged[['Date', 'year', 'month', 'Store', 'Promo2', 'Promo2SinceWeek
 'CompetitionOpenSinceYear', 'CompetitionOpenSinceMonth', 'CompetitionOpenDuration']]
 # print(dfCheck)
 # print(dfMerged)
-print("Analysing merged df: ")
-print(preprocessing.AnalyseDfForNaN(dfMerged))
+# print("Analysing merged df: ")
+# print(preprocessing.AnalyseDfForNaN(dfMerged))
 
 # print(dfMerged['Store'])
 
 # training code
 seed = 128
 epochs = 5
-batchSize = 500
+batchSize = 1000
 trainingSampleSize = int(0.8*dfMerged.shape[0])
 numberOfBatches = math.ceil(trainingSampleSize / batchSize)
 dfTrain = dfMerged[:trainingSampleSize]
@@ -186,9 +187,16 @@ for i in categoricalVariables:
 del dfTrain['Date']
 del dfTrain['Customers']
 del dfValidation_X['Sales']
+del dfValidation_X['Date']
+del dfValidation_X['Customers']
 
-print("dfTrain_x shape: " + str(dfTrain.shape))
+validation_x_matrix = dfValidation_X.as_matrix()
+validation_y_matrix = dfValidation_Y.as_matrix().reshape((dfValidation_Y.shape[0], 1))
+
+# print("dfTrain_x shape: " + str(dfTrain.shape))
 print("training sample size: " + str(trainingSampleSize))
+print("validation x shape: {0}".format(validation_x_matrix.shape))
+print("validation y shape: {0}".format(validation_y_matrix.shape))
 # SetupModel()
 
 print("Setting up model")
@@ -200,11 +208,14 @@ number_of_hidden_layers = 4
 output_layer_number = number_of_hidden_layers + 1
 input_batch_size = 500
 layer_units_size = [input_units, 50, 40, 30, 20, output_units]
-learning_rate = 0.01
+learning_rate = 0.001
 
 # define input and required output
-x = tf.placeholder(tf.float32, [input_batch_size, layer_units_size[0]])
-y = tf.placeholder(tf.float32, [input_batch_size])
+# x = tf.placeholder(tf.float32, [input_batch_size, layer_units_size[0]])
+# y = tf.placeholder(tf.float32, [input_batch_size])
+
+x = tf.placeholder(tf.float32, [None, layer_units_size[0]])
+y = tf.placeholder(tf.float32, [None])
 
 # weights and biases for hidden layers
 weights = {}
@@ -238,12 +249,16 @@ sess = tf.Session()
 sess.run(init)
 
 loss_plot = []
+validation_result = []
+saver = tf.train.Saver()
+total_loss = 0
+grid = gridspec.GridSpec(epochs + 1, 1)
 #plt.plot(range(epochs * trainingSampleSize), loss_plot, label='loss')
 
 # go through the epochs to train model
 for i in range(epochs):
 	print("------------------------------------------------")
-	print("Starting epoch number: " + str(i))
+	print("Starting epoch number: " + str(i + 1))
 
 	print("Shuffling data set")
 	dfShuffled = sml.Shuffle(dfTrain)
@@ -251,6 +266,7 @@ for i in range(epochs):
 
 	index = 0
 	end = 0
+	total_loss = 0
 	for j in range(numberOfBatches - 1):
 
 		#print("Creating test and validation sets")
@@ -275,25 +291,61 @@ for i in range(epochs):
 		sess.run(optimizer, feed_dict={x: train_matrix_x, y: train_matrix_y})
 		l = sess.run(loss, feed_dict={x: train_matrix_x, y: train_matrix_y})
 		l_sqrt = math.sqrt(l)
-		loss_plot.append(l)
-
+		loss_plot.append(l_sqrt)
+		total_loss = l_sqrt + total_loss
 
 		if j % batch_inteval == 0:
 			print("Progress: {0}\% Completed batch number: {1}".format(str(math.ceil(j/numberOfBatches * 100)), str(i)))
 			
 		
 		if j % 20 == 0:
-			print("epoch {0} batch number: {1} loss: {2} loss_sqrt: {3:.2f}".format(i, j, l, l_sqrt))
+			print("epoch {0} batch number: {1} loss_sqrt: {2:.2f} avg loss_sqrt: {3:.2f}".format(i + 1, j, l_sqrt, total_loss/(j + 1)))
 			#plt.plot(range(index), loss_plot, label='loss')
 	#print("Test and validation set creation completed")
 
+	# test model on validation set
+	print("\n\nTesting model on validation set")	
+	predicted_validation = sml.Predict(x, validation_x_matrix, sess, layers[output_layer_number])
+
+	print("Shape of actual data structure: {0}".format(validation_y_matrix.shape))
+	print("Shape of prediction data structure: {0}".format(predicted_validation.shape))
+	rms = sml.EvaluateOutput_Rms(validation_y_matrix, predicted_validation)
+	# mean1, mean2 = sml.EvaluateOutput_Deviation(validation_y_matrix, predicted_validation)
+	result = "end of epoch: {0} rms: {1:.2f}".format(i + 1, rms)
+	validation_result.append(result)
+	# result = "end of epoch: {0} mean1: {1:.2f} mean2: {2:.2f}".format(i, mean1, mean2)
+	# validation_result.append(result)
+
+	print("\n\nPrinting validation set summary: ")
+	for k in range(len(validation_result)):
+		print(validation_result[k])
+
+	# save model to disk
+	if i > 0:
+		# model saved before so do not need meta file
+		saver.save(sess, 'model/rossman-model', global_step=(i + 1) * (numberOfBatches - 1), write_meta_graph=False)
+	else:
+		# saving model for the first time
+		saver.save(sess, 'model/rossman-model', global_step=(i + 1) * (numberOfBatches - 1))
+
+	# add lines to plot
+	# plot losses first
+	# plt.subplot(2, epochs, [1 epochs])
+	plt.subplot(grid[0, 0])
+	plt.plot(range(len(loss_plot)), loss_plot, label='loss')
+	plt.legend()
+	# plot actuals vs prediction
+	# plt.subplot(2, epochs, 2 * epochs - (epochs - i))
+	plt.subplot(grid[i + 1, 0])
+	# plt.plot(range(validation_y_matrix.shape[0]), validation_y_matrix[:,0], label='actual epoch: ' + str(i + 1))
+	# plt.plot(range(validation_y_matrix.shape[0]), predicted_validation[:,0], label='predicted epoch: ' + str(i + 1))
+	plt.plot(range(1000), validation_y_matrix[:1000,0], label='actual epoch: ' + str(i + 1))
+	plt.plot(range(1000), predicted_validation[:1000,0], label='predicted epoch: ' + str(i + 1))
+	plt.legend()
 print("Training completed!")
 print("------------------------------------------------")
-# print("\n\nTest on validation set")	
-# validation_x_matrix = dfValidation_X.as_matrix()
-# validation_y_matrix = dfValidation_Y.as_matrix()
+plt.show()
 
-# pred_temp = tf.equal(tf.argmax())
 
 
 def SetupModel():
