@@ -34,9 +34,11 @@ def EvaluateOutput_Rms(y_actual, y_pred):
 
 def EvaluateOutput_Deviation(y_actual, y_pred):
 
-	percent_diff = ((y_pred - y_actual) / y_actual) * 100
+	percent_diff = ((y_pred[y_actual != 0] - y_actual[y_actual != 0]) / y_actual[y_actual != 0]) * 100
 	print(percent_diff)
-	mean_percent_diff1 = (percent_diff.sum(0))/percent_diff.shape[0]
-	mean_percent_diff2 = np.mean(percent_diff, axis=0)
+	size = percent_diff.shape[0]
+	percent_diff_square = np.square(percent_diff)
+	mean_percent_diff1 = np.sqrt((percent_diff_square.sum(0))/size)
+	# mean_percent_diff2 = np.mean(percent_diff, axis=0)
 
-	return mean_percent_diff1, mean_percent_diff2
+	return mean_percent_diff1

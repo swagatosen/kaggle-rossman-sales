@@ -17,13 +17,16 @@ pd.set_option('display.max_columns', 999)
 root = os.path.dirname(os.path.realpath(__file__))
 storeFileDir = os.path.join(root, "data", "store.csv")
 trainFileDir = os.path.join(root, "data", "train.csv")
+testFileDir = os.path.join(root, "data", "test.csv")
 
 print ("root directory: " + root)
 print ("file location (store): " + storeFileDir)
 print ("file location (train): " + trainFileDir)
+print ("file location (test): " + testFileDir)
 
 dfStore = pd.read_csv(storeFileDir, dtype={'Store': str, 'StoreType': str, 'Assortment': str, 'PromoInterval': str})
 dfTrain = pd.read_csv(trainFileDir, dtype={'Store': str, 'Date': str})
+dfTest = pd.read_csv(testFileDir)
 
 # storeReader = pd.read_csv(storeFileDir, sep=',', iterator=True)
 # trainReader = pd.read_csv(trainFileDir, sep=',', iterator=True)
@@ -46,11 +49,19 @@ dfTrain.info()
 print(dfTrain.describe())
 print(dfTrain.head(10))
 
+print("Train sample data: \n\n")
+dfTest.info()
+print(dfTest.describe())
+print(dfTest.head(10))
+
 print("Analysing train df: ")
 print(preprocessing.AnalyseDfForNaN(dfTrain))
 
 print("Analysing store df: ")
 print(preprocessing.AnalyseDfForNaN(dfStore))
+
+print("Analysing test df: ")
+print(preprocessing.AnalyseDfForNaN(dfTest))
 
 dfStore['Promo2SinceWeek'] = dfStore['Promo2SinceWeek'].map(lambda x: 0 if math.isnan(x) else x)
 dfStore['Promo2SinceYear'] = dfStore['Promo2SinceYear'].map(lambda x: 0 if math.isnan(x) else x)
@@ -109,11 +120,11 @@ categoricalVariables = []
 # timeit.timeit("preprocessing.ProcessDimensionDf(dfMerged['Date'], 'Date', outputColumns=dfDateColumns, " + 
 # 			"funcProcessColumn=preprocessing.SplitDateIntoDayMonthYear2, funcProcessColumnArgs=('YYYY/MM/DD'))", "import train2")
 # run this on mac
-# dfDate = preprocessing.ProcessDimensionDf(dfTrain['Date'], 'Date', outputColumns=dfDateColumns, 
-# 	funcProcessColumn=preprocessing.SplitDateIntoDayMonthYear2, funcProcessColumnArgs=('YYYY-MM-DD'))
-#run this on windows. not sure why this happens.
 dfDate = preprocessing.ProcessDimensionDf(dfTrain['Date'], 'Date', outputColumns=dfDateColumns, 
-	funcProcessColumn=preprocessing.SplitDateIntoDayMonthYear2, funcProcessColumnArgs=('DD/MM/YYYY'))
+	funcProcessColumn=preprocessing.SplitDateIntoDayMonthYear2, funcProcessColumnArgs=('YYYY-MM-DD'))
+#run this on windows. not sure why this happens.
+# dfDate = preprocessing.ProcessDimensionDf(dfTrain['Date'], 'Date', outputColumns=dfDateColumns, 
+# 	funcProcessColumn=preprocessing.SplitDateIntoDayMonthYear2, funcProcessColumnArgs=('DD/MM/YYYY'))
 dfDate.info()
 # print(dfDate)
 dateColumns = ['year', 'month', 'date']
@@ -208,14 +219,14 @@ number_of_hidden_layers = 4
 output_layer_number = number_of_hidden_layers + 1
 input_batch_size = 500
 layer_units_size = [input_units, 50, 40, 30, 20, output_units]
-learning_rate = 0.001
+learning_rate = 0.005
 
 # define input and required output
 # x = tf.placeholder(tf.float32, [input_batch_size, layer_units_size[0]])
 # y = tf.placeholder(tf.float32, [input_batch_size])
 
-x = tf.placeholder(tf.float32, [None, layer_units_size[0]])
-y = tf.placeholder(tf.float32, [None])
+x = tf.placeholder(tf.float32, [None, layer_units_size[0]], name='x')
+y = tf.placeholder(tf.float32, [None], name='y')
 
 # weights and biases for hidden layers
 weights = {}
@@ -232,10 +243,11 @@ layers = {}
 layers[0] = x
 # layers[1] = tf.nn.relu(tf.add(tf.matmul(x, weights[1])))
 for i in range(len(layer_units_size) - 2):
-	layers[i + 1] = tf.nn.relu(tf.add(tf.matmul(layers[i], weights[i]), biases[i]))
+	layers[i + 1] = tf.nn.relu(tf.add(tf.matmul(layers[i], weights[i]), biases[i]), name='layer' + str(i+1))
 
 # output layer
-layers[output_layer_number] = tf.add(tf.matmul(layers[number_of_hidden_layers], weights[number_of_hidden_layers]), biases[number_of_hidden_layers])
+layers[output_layer_number] = tf.add(tf.matmul(layers[number_of_hidden_layers], weights[number_of_hidden_layers]), biases[number_of_hidden_layers], 
+	name='layer' + str(output_layer_number) + '_output')
 
 # loss function - for regression this should be squared loss function
 loss = tf.reduce_mean(tf.square(layers[output_layer_number] - y), name='mean_cost')
@@ -253,6 +265,10 @@ validation_result = []
 saver = tf.train.Saver()
 total_loss = 0
 grid = gridspec.GridSpec(epochs + 1, 1)
+
+min_loss = 0
+min_epoch = 0
+# model_parameters = {}
 #plt.plot(range(epochs * trainingSampleSize), loss_plot, label='loss')
 
 # go through the epochs to train model
@@ -288,10 +304,10 @@ for i in range(epochs):
 		train_matrix_x = dfTrain_X[index:end].as_matrix()
 		train_matrix_y = dfTrain_Y[index:end].as_matrix()
 		index = end
-		sess.run(optimizer, feed_dict={x: train_matrix_x, y: train_matrix_y})
-		l = sess.run(loss, feed_dict={x: train_matrix_x, y: train_matrix_y})
+		cost_func, l = sess.run([optimizer, loss], feed_dict={x: train_matrix_x, y: train_matrix_y})
+		# l = sess.run(loss, feed_dict={x: train_matrix_x, y: train_matrix_y})
 		l_sqrt = math.sqrt(l)
-		loss_plot.append(l_sqrt)
+		
 		total_loss = l_sqrt + total_loss
 
 		if j % batch_inteval == 0:
@@ -300,8 +316,8 @@ for i in range(epochs):
 		
 		if j % 20 == 0:
 			print("epoch {0} batch number: {1} loss_sqrt: {2:.2f} avg loss_sqrt: {3:.2f}".format(i + 1, j, l_sqrt, total_loss/(j + 1)))
+			loss_plot.append(l_sqrt)
 			#plt.plot(range(index), loss_plot, label='loss')
-	#print("Test and validation set creation completed")
 
 	# test model on validation set
 	print("\n\nTesting model on validation set")	
@@ -310,11 +326,19 @@ for i in range(epochs):
 	print("Shape of actual data structure: {0}".format(validation_y_matrix.shape))
 	print("Shape of prediction data structure: {0}".format(predicted_validation.shape))
 	rms = sml.EvaluateOutput_Rms(validation_y_matrix, predicted_validation)
-	# mean1, mean2 = sml.EvaluateOutput_Deviation(validation_y_matrix, predicted_validation)
+	mean1 = sml.EvaluateOutput_Deviation(validation_y_matrix, predicted_validation)
+
 	result = "end of epoch: {0} rms: {1:.2f}".format(i + 1, rms)
 	validation_result.append(result)
-	# result = "end of epoch: {0} mean1: {1:.2f} mean2: {2:.2f}".format(i, mean1, mean2)
-	# validation_result.append(result)
+	result = "end of epoch: {0} mean1: {1:.2f}".format(i + 1, mean1)
+	validation_result.append(result)
+
+
+	# save weights and biases of this epoch
+	if rms < min_loss:
+		min_loss = rms
+		min_epoch = i + 1
+
 
 	print("\n\nPrinting validation set summary: ")
 	for k in range(len(validation_result)):
@@ -323,10 +347,11 @@ for i in range(epochs):
 	# save model to disk
 	if i > 0:
 		# model saved before so do not need meta file
-		saver.save(sess, 'model/rossman-model', global_step=(i + 1) * (numberOfBatches - 1), write_meta_graph=False)
+		#saver.save(sess, 'model_dump/rossman-model', global_step=(i + 1), write_meta_graph=False)
+		saver.save(sess, 'model_dump/rossman-model', global_step=(i + 1))
 	else:
 		# saving model for the first time
-		saver.save(sess, 'model/rossman-model', global_step=(i + 1) * (numberOfBatches - 1))
+		saver.save(sess, 'model_dump/rossman-model', global_step=(i + 1))
 
 	# add lines to plot
 	# plot losses first
@@ -342,9 +367,49 @@ for i in range(epochs):
 	plt.plot(range(1000), validation_y_matrix[:1000,0], label='actual epoch: ' + str(i + 1))
 	plt.plot(range(1000), predicted_validation[:1000,0], label='predicted epoch: ' + str(i + 1))
 	plt.legend()
+
+	print("\n\nPrinting weights and biases for this epoch: ")
+	for i in weights:
+		print("weight name: " + weights[i].name)
+		print(sess.run(weights[i]))
+
+	for i in biases:
+		print("weight name: " + biases[i].name)
+		print(sess.run(biases[i]))
+
 print("Training completed!")
+print("Best weights to use was found at the end of epoch: " + min_epoch)
+sess.close()
+
+# restore best weights
+sess = tf.Session()
+sess.run(init)
+new_saver = tf.train.import_meta_graph('/model_dump/rossman-model-{0}.meta'.format(min_epoch))
+print("Restoring weights and biases from epoch: " + str(min_epoch))
+new_saver.restore(sess, 'model_dump/rossman-model-' + min_epoch)
+print("Model restored")
+
+graph = tf.get_default_graph()
+output_op = graph.get_tensor_by_name('layer' + str(output_layer_number) + '_output:0')
+x_pred = graph.get_tensor_by_name('x:0')
+# y_pred = graph.get_tensor_by_name('y:0')
+
+print("\n\nTesting model on validation set")	
+pred = sml.Predict(x_pred, validation_x_matrix, sess, output_op)
+
+print("Shape of actual data structure: {0}".format(validation_y_matrix.shape))
+print("Shape of prediction data structure: {0}".format(pred.shape))
+rms = sml.EvaluateOutput_Rms(validation_y_matrix, pred)
+mean1 = sml.EvaluateOutput_Deviation(validation_y_matrix, pred)
+
+result = "end of epoch: {0} rms: {1:.2f}".format(i + 1, rms)
+print(result)
+result = "end of epoch: {0} mean1: {1:.2f}".format(i + 1, mean1)
+print(result)
+
+
 print("------------------------------------------------")
-plt.show()
+# plt.show()
 
 
 
