@@ -3,6 +3,16 @@ import swagML as sml
 import numpy as np
 import matplotlib.pyplot as plt
 
+from datetime import datetime
+from time import strftime
+
+d = datetime.now()
+
+print("current time: " + str(d))
+
+print("formatted time: ")
+x = strftime("%Y-%m-%d_%H-%M-%S", d)
+print(x)
 # testArr = [1, 1, 1, 1, 5, 6, 7, 8, 9, 10]
 # shuffled = sklearn.utils.shuffle(testArr)
 
@@ -24,8 +34,8 @@ import matplotlib.pyplot as plt
 
 # plt.show()
 
-actuals = np.array([1, 0, 0, 2])
-pred = np.array([1, 1, 1, 1])
+# actuals = np.array([1, 0, 0, 2])
+# pred = np.array([1, 1, 1, 1])
 
-mean1 = sml.EvaluateOutput_Deviation(actuals, pred)
-print("mean1: {0}".format(mean1) )
+# mean1 = sml.EvaluateOutput_Deviation(actuals, pred)
+# print("mean1: {0}".format(mean1) )
